@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2017, 2019.
@@ -15,12 +13,12 @@
 """Tests PassManager.run()"""
 
 from qiskit import QuantumRegister, QuantumCircuit
-from qiskit.extensions.standard import CXGate
+from qiskit.circuit.library import CXGate
 from qiskit.transpiler.preset_passmanagers import level_1_pass_manager
 from qiskit.test import QiskitTestCase
 from qiskit.test.mock import FakeMelbourne
 from qiskit.transpiler import Layout, CouplingMap
-from qiskit.transpiler.pass_manager_config import PassManagerConfig
+from qiskit.transpiler.passmanager_config import PassManagerConfig
 
 
 class TestPassManagerRun(QiskitTestCase):

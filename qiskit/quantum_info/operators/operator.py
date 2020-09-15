@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2017, 2019.
@@ -24,7 +22,7 @@ import numpy as np
 
 from qiskit.circuit.quantumcircuit import QuantumCircuit
 from qiskit.circuit.instruction import Instruction
-from qiskit.extensions.standard import IGate, XGate, YGate, ZGate, HGate, SGate, TGate
+from qiskit.circuit.library.standard_gates import IGate, XGate, YGate, ZGate, HGate, SGate, TGate
 from qiskit.exceptions import QiskitError
 from qiskit.quantum_info.operators.predicates import is_unitary_matrix, matrix_equal
 from qiskit.quantum_info.operators.base_operator import BaseOperator
@@ -65,13 +63,12 @@ class Operator(BaseOperator):
         Raises:
             QiskitError: if input data cannot be initialized as an operator.
 
-        Additional Information
-        ----------------------
-        If the input or output dimensions are None, they will be
-        automatically determined from the input data. If the input data is
-        a Numpy array of shape (2**N, 2**N) qubit systems will be used. If
-        the input operator is not an N-qubit operator, it will assign a
-        single subsystem with dimension specified by the shape of the input.
+        Additional Information:
+            If the input or output dimensions are None, they will be
+            automatically determined from the input data. If the input data is
+            a Numpy array of shape (2**N, 2**N) qubit systems will be used. If
+            the input operator is not an N-qubit operator, it will assign a
+            single subsystem with dimension specified by the shape of the input.
         """
         if isinstance(data, (list, np.ndarray)):
             # Default initialization from list or numpy array matrix
@@ -92,9 +89,9 @@ class Operator(BaseOperator):
             data = data.to_operator()
             self._data = data.data
             if input_dims is None:
-                input_dims = data.input_dims()
+                input_dims = data._input_dims
             if output_dims is None:
-                output_dims = data.output_dims()
+                output_dims = data._output_dims
         elif hasattr(data, 'to_matrix'):
             # If no 'to_operator' attribute exists we next look for a
             # 'to_matrix' attribute to a matrix that will be cast into
@@ -109,15 +106,19 @@ class Operator(BaseOperator):
         super().__init__(input_dims, output_dims)
 
     def __repr__(self):
-        return 'Operator({}, input_dims={}, output_dims={})'.format(
-            self._data, self._input_dims, self._output_dims)
+        prefix = 'Operator('
+        pad = len(prefix) * ' '
+        return '{}{},\n{}input_dims={}, output_dims={})'.format(
+            prefix, np.array2string(
+                self.data, separator=', ', prefix=prefix),
+            pad, self._input_dims, self._output_dims)
 
     def __eq__(self, other):
         """Test if two Operators are equal."""
         if not super().__eq__(other):
             return False
         return np.allclose(
-            self.data, other.data, rtol=self._rtol, atol=self._atol)
+            self.data, other.data, rtol=self.rtol, atol=self.atol)
 
     @property
     def data(self):
@@ -135,8 +136,9 @@ class Operator(BaseOperator):
             Operator: The N-qubit operator.
 
         Raises:
-            QiskitError: if the label contains invalid characters, or the length
-            of the label is larger than an explicitly specified num_qubits.
+            QiskitError: if the label contains invalid characters, or the
+                         length of the label is larger than an explicitly
+                         specified num_qubits.
 
         Additional Information:
             The labels correspond to the single-qubit matrices:
@@ -183,9 +185,9 @@ class Operator(BaseOperator):
     def is_unitary(self, atol=None, rtol=None):
         """Return True if operator is a unitary matrix."""
         if atol is None:
-            atol = self._atol
+            atol = self.atol
         if rtol is None:
-            rtol = self._rtol
+            rtol = self.rtol
         return is_unitary_matrix(self._data, rtol=rtol, atol=atol)
 
     def to_operator(self):
@@ -238,6 +240,8 @@ class Operator(BaseOperator):
             Setting ``front=True`` returns `right` matrix multiplication
             ``A * B`` and is equivalent to the :meth:`dot` method.
         """
+        if qargs is None:
+            qargs = getattr(other, 'qargs', None)
         if not isinstance(other, Operator):
             other = Operator(other)
         # Validate dimensions are compatible and return the composed
@@ -292,7 +296,7 @@ class Operator(BaseOperator):
 
         Raises:
             QiskitError: if other cannot be converted to an Operator or has
-            incompatible dimensions.
+                         incompatible dimensions.
         """
         return super().dot(other, qargs=qargs)
 
@@ -307,7 +311,7 @@ class Operator(BaseOperator):
 
         Raises:
             QiskitError: if the input and output dimensions of the operator
-            are not equal, or the power is not a positive integer.
+                         are not equal, or the power is not a positive integer.
         """
         if not isinstance(n, int):
             raise QiskitError("Can only take integer powers of Operator.")
@@ -357,28 +361,42 @@ class Operator(BaseOperator):
         data = np.kron(other._data, self._data)
         return Operator(data, input_dims, output_dims)
 
-    def _add(self, other):
+    def _add(self, other, qargs=None):
         """Return the operator self + other.
+
+        If ``qargs`` are specified the other operator will be added
+        assuming it is identity on all other subsystems.
 
         Args:
             other (Operator): an operator object.
+            qargs (None or list): optional subsystems to add on
+                                  (Default: None)
 
         Returns:
             Operator: the operator self + other.
 
         Raises:
             QiskitError: if other is not an operator, or has incompatible
-            dimensions.
+                         dimensions.
         """
+        # pylint: disable=import-outside-toplevel, cyclic-import
+        from qiskit.quantum_info.operators.scalar_op import ScalarOp
+
+        if qargs is None:
+            qargs = getattr(other, 'qargs', None)
+
         if not isinstance(other, Operator):
             other = Operator(other)
-        self._validate_add_dims(other)
+
+        self._validate_add_dims(other, qargs)
+        other = ScalarOp._pad_with_identity(self, other, qargs)
+
         ret = copy.copy(self)
         ret._data = self.data + other.data
         return ret
 
     def _multiply(self, other):
-        """Return the operator other * self.
+        """Return the operator self * other.
 
         Args:
             other (complex): a complex number.
@@ -414,9 +432,9 @@ class Operator(BaseOperator):
         if self.dim != other.dim:
             return False
         if atol is None:
-            atol = self._atol
+            atol = self.atol
         if rtol is None:
-            rtol = self._rtol
+            rtol = self.rtol
         return matrix_equal(self.data, other.data, ignore_phase=True,
                             rtol=rtol, atol=atol)
 
@@ -465,11 +483,12 @@ class Operator(BaseOperator):
     @classmethod
     def _init_instruction(cls, instruction):
         """Convert a QuantumCircuit or Instruction to an Operator."""
+        # Initialize an identity operator of the correct size of the circuit
+        dimension = 2 ** instruction.num_qubits
+        op = Operator(np.eye(dimension))
         # Convert circuit to an instruction
         if isinstance(instruction, QuantumCircuit):
             instruction = instruction.to_instruction()
-        # Initialize an identity operator of the correct size of the circuit
-        op = Operator(np.eye(2 ** instruction.num_qubits))
         op._append_instruction(instruction)
         return op
 
@@ -490,19 +509,35 @@ class Operator(BaseOperator):
 
     def _append_instruction(self, obj, qargs=None):
         """Update the current Operator by apply an instruction."""
+        from qiskit.circuit.barrier import Barrier
+        from .scalar_op import ScalarOp
+
         mat = self._instruction_to_matrix(obj)
         if mat is not None:
             # Perform the composition and inplace update the current state
             # of the operator
             op = self.compose(mat, qargs=qargs)
             self._data = op.data
+        elif isinstance(obj, Barrier):
+            return
         else:
             # If the instruction doesn't have a matrix defined we use its
             # circuit decomposition definition if it exists, otherwise we
             # cannot compose this gate and raise an error.
             if obj.definition is None:
                 raise QiskitError('Cannot apply Instruction: {}'.format(obj.name))
-            for instr, qregs, cregs in obj.definition:
+            if not isinstance(obj.definition, QuantumCircuit):
+                raise QiskitError('Instruction "{}" '
+                                  'definition is {} but expected QuantumCircuit.'.format(
+                                      obj.name, type(obj.definition)))
+            if obj.definition.global_phase:
+                dimension = 2 ** self.num_qubits
+                op = self.compose(
+                    ScalarOp(dimension, np.exp(1j * float(obj.definition.global_phase))),
+                    qargs=qargs)
+                self._data = op.data
+            flat_instr = obj.definition.to_instruction()
+            for instr, qregs, cregs in flat_instr.definition.data:
                 if cregs:
                     raise QiskitError(
                         'Cannot apply instruction with classical registers: {}'.format(

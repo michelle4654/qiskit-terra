@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2019.
@@ -68,20 +66,20 @@ class CustomSolver(RecursiveBacktrackingSolver):
 
 
 class CSPLayout(AnalysisPass):
-    """
-    If possible, chooses a Layout as a CSP, using backtracking.
-    """
+    """If possible, chooses a Layout as a CSP, using backtracking."""
 
     def __init__(self, coupling_map, strict_direction=False, seed=None, call_limit=1000,
                  time_limit=10):
-        """
-        If possible, chooses a Layout as a CSP, using backtracking. If not possible,
-        does not set the layout property. In all the cases, the property ``CSPLayout_stop_reason``
-        will be added with one of the following values:
-         - solution found: If a perfect layout was found.
-         - nonexistent solution: If no perfect layout was found and every combination was checked.
-         - call limit reached: If no perfect layout was found and the call limit was reached.
-         - time limit reached: If no perfect layout was found and the time limit was reached.
+        """If possible, chooses a Layout as a CSP, using backtracking.
+
+        If not possible, does not set the layout property. In all the cases,
+        the property `CSPLayout_stop_reason` will be added with one of the
+        following values:
+
+        * solution found: If a perfect layout was found.
+        * nonexistent solution: If no perfect layout was found and every combination was checked.
+        * call limit reached: If no perfect layout was found and the call limit was reached.
+        * time limit reached: If no perfect layout was found and the time limit was reached.
 
         Args:
             coupling_map (Coupling): Directed graph representing a coupling map.
@@ -102,10 +100,10 @@ class CSPLayout(AnalysisPass):
         self.seed = seed
 
     def run(self, dag):
-        qubits = dag.qubits()
+        qubits = dag.qubits
         cxs = set()
 
-        for gate in dag.twoQ_gates():
+        for gate in dag.two_qubit_ops():
             cxs.add((qubits.index(gate.qargs[0]),
                      qubits.index(gate.qargs[1])))
         edges = self.coupling_map.get_edges()

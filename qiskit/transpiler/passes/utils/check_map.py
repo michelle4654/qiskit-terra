@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2017, 2018.
@@ -45,7 +43,7 @@ class CheckMap(AnalysisPass):
         """
         self.property_set['is_swap_mapped'] = True
 
-        for gate in dag.twoQ_gates():
+        for gate in dag.two_qubit_ops():
             physical_q0 = gate.qargs[0].index
             physical_q1 = gate.qargs[1].index
 

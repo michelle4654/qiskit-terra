@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "id": "http://www.qiskit.org/schemas/qobj_schema.json",
     "description": "OpenQuantum quantum object data structure for running experiments",
-    "version": "1.0.0",
+    "version": "1.4.0",
     "definitions": {
         "bfunc": {
             "properties": {
@@ -87,6 +87,22 @@
             ],
             "type": "object"
         },
+        "discriminator": {
+            "description": "JSON representation of a discriminator object",
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" },
+                "params": { "type": "object" }
+            }
+        },
+        "kernel": {
+            "description": "JSON representation of a kernel object",
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" },
+                "params": { "type": "object" }
+            }
+        },
         "openpulse_instructions": {
             "oneOf": [
                 {
@@ -96,7 +112,12 @@
                                 "enum": [
                                     "pv",
                                     "fc",
+                                    "setp",
+                                    "shiftp",
+                                    "setf",
+                                    "shiftf",
                                     "acquire",
+                                    "delay",
                                     "parametric_pulse"
                                 ]
                             }
@@ -157,6 +178,98 @@
                     "properties": {
                         "name": {
                             "enum": [
+                                "setp"
+                            ]
+                        },
+                        "phase": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "phase",
+                        "t0",
+                        "ch"
+                    ],
+                    "title": "Set Phase"
+                },
+                {
+                    "properties": {
+                        "name": {
+                            "enum": [
+                                "shiftp"
+                            ]
+                        },
+                        "phase": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "phase",
+                        "t0",
+                        "ch"
+                    ],
+                    "title": "Shift Phase"
+                },
+                {
+                    "properties": {
+                        "name": {
+                            "enum": [
+                                "setf"
+                            ]
+                        },
+                        "frequency": {
+                            "OneOf":[
+                            {"type": "number"},
+                            {"type": "string"}]
+                        }
+                    },
+                    "required": [
+                        "frequency",
+                        "t0",
+                        "ch"
+                    ],
+                    "title": "Set frequency"
+                },
+                {
+                    "properties": {
+                        "name": {
+                            "enum": [
+                                "shiftf"
+                            ]
+                        },
+                        "frequency": {
+                            "type": "number"
+                        }
+                    },
+                    "required": [
+                        "frequency",
+                        "t0",
+                        "ch"
+                    ],
+                    "title": "Shift frequency"
+                },
+                {
+                    "properties": {
+                        "name": {
+                            "enum": [
+                                "delay"
+                            ]
+                        },
+                        "duration": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "duration",
+                        "t0",
+                        "ch"
+                    ],
+                    "title": "Delay in pulse"
+                },
+                {
+                    "properties": {
+                        "name": {
+                            "enum": [
                                 "parametric_pulse"
                             ]
                         },
@@ -174,13 +287,19 @@
                 {
                     "properties": {
                         "discriminators": {
-                            "type": "array"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/discriminator"
+                            }
                         },
                         "duration": {
                             "type": "number"
                         },
                         "kernels": {
-                            "type": "array"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/kernel"
+                            }
                         },
                         "memory_slot": {
                             "items": {
@@ -728,6 +847,41 @@
             },
             "type": "array"
         },
+        "calibration_entry": {
+            "description": "The instruction description of each calibrated gate.",
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "Gate name",
+                    "type": "string"
+                },
+                "qubits": {
+                    "items": {
+                        "minimum": 0,
+                        "type": "integer"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                },
+                "params": {
+                    "description": "Gate parameters",
+                    "type": "array"
+                },
+                "instructions": {
+                    "description": "Pulse instructions implementing the given gate.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/qobjinstructions"
+                    }
+                }
+            },
+            "required": [
+                "name",
+                "qubits",
+                "params",
+                "instructions"
+            ]
+        },
         "qobjexp": {
             "description": "Quantum experiment",
             "properties": {
@@ -743,6 +897,23 @@
                             "description": "Total number of qubits used in this experiment.",
                             "minimum": 1,
                             "type": "integer"
+                        },
+                        "init_qubits": {
+                            "description": "Whether to initialize the qubits in the ground state before each shot.",
+                            "type": "boolean"
+                        },
+                        "calibrations": {
+                            "description": "User-specified pulse-level calibrations for operations utilized in this experiment.",
+                            "type": "object",
+                            "properties": {
+                                "gates": {
+                                    "description": "A list of dicts which contain all the required information to lower a gate to waveforms.",
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/calibration_entry"
+                                    }
+                                }
+                            }
                         }
                     },
                     "title": "Experiment level configuration",
@@ -906,7 +1077,6 @@
                     "description": "Configuration options that apply to all experiments in this qobj. For options that may be set on a per-experiment basis, these are the defaults.",
                     "properties": {
                         "max_credits": {
-                            "default": 3,
                             "type": "integer"
                         },
                         "memory_slots": {
@@ -920,13 +1090,49 @@
                             "type": "integer"
                         },
                         "seed": {
-                            "default": 1,
                             "type": "integer"
                         },
                         "shots": {
                             "description": "Number of repetitions of each experiment",
                             "minimum": 1,
                             "type": "integer"
+                        },
+                        "kernels": {
+                            "type": "object",
+                            "patternProperties": {
+                                "^q[0-9]+$": {
+                                    "$ref": "#/definitions/kernel"
+                                }
+                            }
+                        },
+                        "discriminators": {
+                            "type": "object",
+                            "patternProperties": {
+                                "^q[0-9]+$": {
+                                    "$ref": "#/definitions/discriminator"
+                                }
+                            }
+                        },
+                        "pulse_library": {
+                            "$ref": "#/definitions/pulse_library"
+                        },
+                        "rep_delay": {
+                            "minimum": 0,
+                            "description": "Delay between programs (microseconds).",
+                            "type": "number"
+                        },
+                        "calibrations": {
+                            "description": "User-specified pulse-level calibrations for operations utilized across all experiments in this job.",
+                            "type": "object",
+                            "properties": {
+                                "gates": {
+                                    "description": "A list of dicts which contain all the required information to lower a gate to waveforms.",
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/calibration_entry"
+                                    }
+                                }
+                            }
                         }
                     },
                     "title": "Qobj-level configuration",
@@ -1025,7 +1231,13 @@
                         },
                         "rep_time": {
                             "minimum": 1,
+                            "description": "Execution time of program (microseconds).",
                             "type": "integer"
+                        },
+                        "rep_delay": {
+                            "minimum": 0,
+                            "description": "Delay between programs (microseconds).",
+                            "type": "number"
                         }
                     },
                     "required": [

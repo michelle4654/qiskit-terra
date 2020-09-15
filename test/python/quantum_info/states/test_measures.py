@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2017, 2020
@@ -187,7 +185,7 @@ class TestStateMeasures(QiskitTestCase):
         for rho in rhos:
             self.assertAlmostEqual(entropy(rho), 1)
             self.assertAlmostEqual(entropy(rho, base=2), 1)
-            self.assertAlmostEqual(entropy(rho, base=np.e), -np.log(0.5))
+            self.assertAlmostEqual(entropy(rho, base=np.e), -1 * np.log(0.5))
         # Array input
         for prob in [0.001, 0.3, 0.7, 0.999]:
             rho = np.diag([prob, 1 - prob])

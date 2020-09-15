@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2019.
@@ -15,6 +13,7 @@
 # pylint: disable=missing-docstring
 
 """Test the PulseDefaults part of the backend."""
+import copy
 import warnings
 
 import numpy as np
@@ -27,6 +26,7 @@ class TestPulseDefaults(QiskitTestCase):
     """Test the PulseDefaults creation and method usage."""
 
     def setUp(self):
+        super().setUp()
         self.defs = FakeOpenPulse2Q().defaults()
         self.inst_map = self.defs.instruction_schedule_map
 
@@ -51,7 +51,7 @@ class TestPulseDefaults(QiskitTestCase):
         self.assertTrue(self.inst_map.has('cx', (0, 1)))
         self.assertEqual(self.inst_map.get_parameters('u1', 0), ('P0',))
         u1_minus_pi = self.inst_map.get('u1', 0, P0=np.pi)
-        fc_cmd = u1_minus_pi.instructions[0][-1].command
+        fc_cmd = u1_minus_pi.instructions[0][-1]
         self.assertEqual(fc_cmd.phase, -np.pi)
 
     def test_str(self):
@@ -61,3 +61,9 @@ class TestPulseDefaults(QiskitTestCase):
         self.assertTrue("Multi qubit instructions:\n  (0, 1): " in str(self.defs)[70:])
         self.assertTrue("Qubit Frequencies [GHz]\n[4.9, 5.0]\nMeasurement Frequencies [GHz]\n[6.5, "
                         "6.6] )>" in str(self.defs)[100:])
+
+    def test_deepcopy(self):
+        """Test that deepcopy creates an identical object."""
+        copy_defs = copy.deepcopy(self.defs)
+        self.assertEqual(list(copy_defs.to_dict().keys()),
+                         list(self.defs.to_dict().keys()))

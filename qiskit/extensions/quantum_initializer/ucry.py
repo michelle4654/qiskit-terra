@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2020.
@@ -22,22 +20,13 @@ a single-qubit rotation R_y(a_i) is applied to the target qubit.
 """
 import math
 
-from qiskit import QuantumRegister, QiskitError
 from qiskit.circuit.quantumcircuit import QuantumCircuit
-from qiskit.extensions.quantum_initializer.uc_pauli_rot import UCPauliRotGate, UCPauliRotMeta
+from qiskit.circuit.quantumregister import QuantumRegister
+from qiskit.exceptions import QiskitError
+from qiskit.extensions.quantum_initializer.uc_pauli_rot import UCPauliRotGate
 
 
-class UCRYMeta(UCPauliRotMeta):
-    """A metaclass to ensure that UCRYGate and UCY are of the same type.
-
-    Can be removed when UCY gets removed.
-    """
-    @classmethod
-    def __instancecheck__(mcs, inst):
-        return type(inst) in {UCRYGate, UCY}  # pylint: disable=unidiomatic-typecheck
-
-
-class UCRYGate(UCPauliRotGate, metaclass=UCRYMeta):
+class UCRYGate(UCPauliRotGate):
     """
     Uniformly controlled rotations (also called multiplexed rotations).
     The decomposition is based on
@@ -58,13 +47,13 @@ def ucry(self, angle_list, q_controls, q_target):
     The decomposition is base on https://arxiv.org/pdf/quant-ph/0406176.pdf by Shende et al.
 
     Args:
-        angle_list (list[numbers): list of (real) rotation angles [a_0,...,a_{2^k-1}]
+        angle_list (list[numbers): list of (real) rotation angles :math:`[a_0,...,a_{2^k-1}]`
         q_controls (QuantumRegister|list[Qubit]): list of k control qubits
             (or empty list if no controls). The control qubits are ordered according to their
-            significance in increasing order: For example if q_controls=[q[1],q[2]]
-            (with q = QuantumRegister(2)), the rotation Ry(a_0)is performed if q[1] and q[2]
-            are in the state zero, the rotation  Ry(a_1) is performed if q[1] is in the state
-             one and q[2] is in the state zero, and so on
+            significance in increasing order: For example if ``q_controls=[q[0],q[1]]``
+            (with ``q = QuantumRegister(2)``), the rotation ``Ry(a_0)`` is performed if ``q[0]``
+            and ``q[1]`` are in the state zero, the rotation ``Ry(a_1)`` is performed if ``q[0]``
+            is in the state one and ``q[1]`` is in the state zero, and so on
         q_target (QuantumRegister|Qubit): target qubit, where we act on with
             the single-qubit rotation gates
 
@@ -99,18 +88,6 @@ def ucry(self, angle_list, q_controls, q_target):
     return self.append(UCRYGate(angle_list), [q_target] + q_controls, [])
 
 
-class UCY(UCRYGate, metaclass=UCRYMeta):
-    """The deprecated UCRYGate class."""
-
-    def __init__(self, angle_list):
-        import warnings
-        warnings.warn('The class UCY is deprecated as of 0.14.0, and '
-                      'will be removed no earlier than 3 months after that release date. '
-                      'You should use the class UCRYGate instead.',
-                      DeprecationWarning, stacklevel=2)
-        super().__init__(angle_list)
-
-
 def ucy(self, angle_list, q_controls, q_target):
     """Deprecated version of ucry."""
     import warnings
@@ -122,4 +99,3 @@ def ucy(self, angle_list, q_controls, q_target):
 
 
 QuantumCircuit.ucry = ucry
-QuantumCircuit.ucy = ucy  # deprecated, but still supported

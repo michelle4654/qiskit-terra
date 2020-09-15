@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2017, 2018.
@@ -46,9 +44,9 @@ class PassManager:
             callback: DEPRECATED - A callback function that will be called after each pass
                 execution.
 
-        .. deprecated ::
+        .. deprecated:: 0.13.0
             The ``callback`` parameter is deprecated in favor of
-            ``PassManager.run(..., callback=callback, ...).
+            ``PassManager.run(..., callback=callback, ...)``.
         """
         self.callback = None
 
@@ -111,7 +109,7 @@ class PassManager:
             flow_controller_conditions: control flow plugins.
 
         Raises:
-            TranspilerError: if a pass in passes is not a proper pass.
+            TranspilerError: if a pass in passes is not a proper pass or index not found.
 
         See Also:
             ``RunningPassManager.add_flow_controller()`` for more information about the control
@@ -126,6 +124,20 @@ class PassManager:
         try:
             self._pass_sets[index] = {'passes': passes,
                                       'flow_controllers': flow_controller_conditions}
+        except IndexError:
+            raise TranspilerError('Index to replace %s does not exists' % index)
+
+    def remove(self, index: int) -> None:
+        """Removes a particular pass in the scheduler.
+
+        Args:
+            index: Pass index to replace, based on the position in passes().
+
+        Raises:
+            TranspilerError: if the index is not found.
+        """
+        try:
+            del self._pass_sets[index]
         except IndexError:
             raise TranspilerError('Index to replace %s does not exists' % index)
 
@@ -163,7 +175,6 @@ class PassManager:
     def _normalize_passes(passes: Union[BasePass, List[BasePass]]) -> List[BasePass]:
         if isinstance(passes, BasePass):
             passes = [passes]
-
         for pass_ in passes:
             if not isinstance(pass_, BasePass):
                 raise TranspilerError('%s is not a pass instance' % pass_.__class__)
@@ -212,6 +223,8 @@ class PassManager:
         """
         if isinstance(circuits, QuantumCircuit):
             return self._run_single_circuit(circuits, output_name, callback)
+        elif len(circuits) == 1:
+            return self._run_single_circuit(circuits[0], output_name, callback)
         else:
             return self._run_several_circuits(circuits, output_name, callback)
 
@@ -276,28 +289,24 @@ class PassManager:
         self.property_set = running_passmanager.property_set
         return result
 
-    def draw(
-            self,
-            filename: str = None,
-            style: Dict = None,
-            raw: bool = False
-    ) -> Union['PIL.Image', None]:
+    def draw(self, filename=None, style=None, raw=False):
         """Draw the pass manager.
 
         This function needs `pydot <https://github.com/erocarrera/pydot>`__, which in turn needs
         `Graphviz <https://www.graphviz.org/>`__ to be installed.
 
         Args:
-            filename: file path to save image to.
-            style: keys are the pass classes and the values are the colors to make them. An
+            filename (str): file path to save image to.
+            style (dict): keys are the pass classes and the values are the colors to make them. An
                 example can be seen in the DEFAULT_STYLE. An ordered dict can be used to ensure
                 a priority coloring when pass falls into multiple categories. Any values not
                 included in the provided dict will be filled in from the default dict.
-            raw: If ``True``, save the raw Dot output instead of the image.
+            raw (bool): If ``True``, save the raw Dot output instead of the image.
 
         Returns:
-            an in-memory representation of the pass manager, or ``None`` if no image was generated
-            or PIL is not installed.
+            Optional[PassManager]: an in-memory representation of the pass manager, or ``None``
+            if no image was generated or `Pillow <https://pypi.org/project/Pillow/>`__
+            is not installed.
 
         Raises:
             ImportError: when nxpd or pydot not installed.

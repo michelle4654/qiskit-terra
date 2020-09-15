@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2017, 2018.
@@ -36,7 +34,7 @@ class CommutationAnalysis(AnalysisPass):
 
     def __init__(self):
         super().__init__()
-        self.gates_on_wire = {}
+        self.cache = {}
 
     def run(self, dag):
         """Run the CommutationAnalysis pass on `dag`.
@@ -55,7 +53,7 @@ class CommutationAnalysis(AnalysisPass):
         # commutation set that contains node.
 
         for wire in dag.wires:
-            wire_name = "{0}[{1}]".format(str(wire.register.name), str(wire.index))
+            wire_name = "{}[{}]".format(str(wire.register.name), str(wire.index))
             self.property_set['commutation_set'][wire_name] = []
 
         # Add edges to the dictionary for each qubit
@@ -67,7 +65,7 @@ class CommutationAnalysis(AnalysisPass):
 
         # Construct the commutation set
         for wire in dag.wires:
-            wire_name = "{0}[{1}]".format(str(wire.register.name), str(wire.index))
+            wire_name = "{}[{}]".format(str(wire.register.name), str(wire.index))
 
             for current_gate in dag.nodes_on_wire(wire):
 
@@ -79,7 +77,7 @@ class CommutationAnalysis(AnalysisPass):
                     prev_gate = current_comm_set[-1][-1]
                     does_commute = False
                     try:
-                        does_commute = _commute(current_gate, prev_gate)
+                        does_commute = _commute(current_gate, prev_gate, self.cache)
                     except TranspilerError:
                         pass
                     if does_commute:
@@ -92,7 +90,7 @@ class CommutationAnalysis(AnalysisPass):
                 self.property_set['commutation_set'][(current_gate, wire_name)] = temp_len - 1
 
 
-def _commute(node1, node2):
+def _commute(node1, node2, cache):
 
     if node1.type != "op" or node2.type != "op":
         return False
@@ -115,8 +113,18 @@ def _commute(node1, node2):
 
     id_op = Operator(np.eye(2 ** qbit_num))
 
-    op12 = id_op.compose(node1.op, qargs=qarg1).compose(node2.op, qargs=qarg2)
-    op21 = id_op.compose(node2.op, qargs=qarg2).compose(node1.op, qargs=qarg1)
+    node1_key = (node1.op.name, str(node1.op.params), str(qarg1))
+    node2_key = (node2.op.name, str(node2.op.params), str(qarg2))
+    if (node1_key, node2_key) in cache:
+        op12 = cache[(node1_key, node2_key)]
+    else:
+        op12 = id_op.compose(node1.op, qargs=qarg1).compose(node2.op, qargs=qarg2)
+        cache[(node1_key, node2_key)] = op12
+    if (node2_key, node1_key) in cache:
+        op21 = cache[(node2_key, node1_key)]
+    else:
+        op21 = id_op.compose(node2.op, qargs=qarg2).compose(node1.op, qargs=qarg1)
+        cache[(node2_key, node1_key)] = op21
 
     if_commute = (op12 == op21)
 

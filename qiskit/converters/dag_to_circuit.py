@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # This code is part of Qiskit.
 #
 # (C) Copyright IBM 2017, 2018.
@@ -31,7 +29,7 @@ def dag_to_circuit(dag):
             from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
             from qiskit.dagcircuit import DAGCircuit
             from qiskit.converters import circuit_to_dag
-            from qiskit.extensions.standard import CHGate, U2Gate, CXGate
+            from qiskit.circuit.library.standard_gates import CHGate, U2Gate, CXGate
             from qiskit.converters import dag_to_circuit
             %matplotlib inline
 
@@ -48,7 +46,8 @@ def dag_to_circuit(dag):
     """
 
     name = dag.name or None
-    circuit = QuantumCircuit(*dag.qregs.values(), *dag.cregs.values(), name=name)
+    circuit = QuantumCircuit(*dag.qregs.values(), *dag.cregs.values(), name=name,
+                             global_phase=dag.global_phase)
 
     for node in dag.topological_op_nodes():
         # Get arguments for classical control (if any)
